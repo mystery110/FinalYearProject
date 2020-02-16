@@ -5,6 +5,11 @@ from tqdm import tqdm
 
 REBUILD_DATA = False
 
+Img_size=100
+Batch_Size = 100
+Epochs = 5
+
+
 
 class Animal():
     IMG_SIZE = 100
@@ -62,7 +67,7 @@ net = Net().to(Device)
 ###
 import torch.optim as optim
 
-img = torch.Tensor([i[0] for i in training_data]).view(-1, 100, 100)
+img = torch.Tensor([i[0] for i in training_data]).view(-1,Img_size,Img_size)
 img = img / 255.0  # Scaling the value of each pixel to 0~1
 lbl = torch.Tensor([i[1] for i in training_data])
 
@@ -78,8 +83,6 @@ print(len(Train_img))
 print(len(Test_img))
 
 ##
-Batch_Size = 100
-Epochs = 2
 
 
 def train(net):
@@ -87,7 +90,7 @@ def train(net):
     loss_function = nn.MSELoss()
     for epoch in range(Epochs):
         for i in tqdm(range(0, len(Train_img), Batch_Size)):
-            batch_img = Train_img[i:i + Batch_Size].view(-1, 1, 100, 100)
+            batch_img = Train_img[i:i + Batch_Size].view(-1, 1, Img_size, Img_size)
             batch_lbl = Train_lbl[i:i + Batch_Size]
             batch_img, batch_lbl = batch_img.to(Device),batch_lbl.to(Device)
 
@@ -96,10 +99,7 @@ def train(net):
             loss = loss_function(output, batch_lbl)
             loss.backward()
             optimizer.step()
-        print(f"Epoch:{epoch},Lose{loss}")
-
-
-train(net)
+        print(f"Epoch:{epoch},Lose:{loss}")
 
 ##
 def test(net):
@@ -107,11 +107,16 @@ def test(net):
     total = 0
     with torch.no_grad():
         for i in tqdm(range(len(Test_img))):
-            real_lbl = torch.argmax(Test_lbl[i])
-            net_out = net(Test_img[i].view(-1, 1, 100, 100))[0]
+            real_lbl = torch.argmax(Test_lbl[i]).to(Device)
+            net_out = net(Test_img[i].view(-1, 1, Img_size,Img_size).to(Device))[0]
 
             predicted_lbl = torch.argmax(net_out)
             if predicted_lbl == real_lbl:
                 correct += 1
             total += 1
     print("Accuracy:", round(correct / total, 3))
+train(net)
+test(net)
+
+##
+
