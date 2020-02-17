@@ -6,11 +6,11 @@ from Net import *
 from tqdm import tqdm
 import time
 
-REBUILD_DATA =True
+REBUILD_DATA = False
 
 Img_size = 100
-Batch_Size = 100
-Epochs = 5
+Batch_Size = 10
+Epochs = 10
 
 
 class Animal():
@@ -19,33 +19,32 @@ class Animal():
     StudentCenter = "Data/Building/StudentCenter"
     LABELS = {YunPing: 0, StudentCenter: 1}
     training_data = []
-    YunPing = 0
-    StudentCenter = 0
+    YunPing_count = 0
+    StudentCenter_count = 0
 
     def make_training_data(self):
         for label in self.LABELS:
             print(label)
             for f in tqdm(os.listdir(label)):
-                if "jpg" in f:
-                    try:
-                        path = os.path.join(label, f)
-                        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-                        img = cv2.resize(img, (self.IMG_SIZE, self.IMG_SIZE))
-                        self.training_data.append([np.array(img), np.eye(2)[self.LABELS[label]]])
-                        # do something like print(np.eye(2)[1]), just makes one_hot vector
+                try:
+                    path = os.path.join(label, f)
+                    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+                    img = cv2.resize(img, (self.IMG_SIZE, self.IMG_SIZE))
+                    self.training_data.append([np.array(img), np.eye(2)[self.LABELS[label]]])
+                    # do something like print(np.eye(2)[1]), just makes one_hot vector
 
-                        if label == self.YunPing:
-                            self.YunPing += 1
-                        elif label == self.StudentCenter:
-                            self.StudentCenter += 1
-                    except Exception as e:
-                        print(e)
-                        pass
+                    if label == self.YunPing:
+                        self.YunPing_count += 1
+                    elif label == self.StudentCenter:
+                        self.StudentCenter_count += 1
+                except Exception as e:
+                    print(e)
+                    pass
 
         np.random.shuffle(self.training_data)
         np.save("training_data.npy", self.training_data)
-        print("YunPing:", self.YunPing)
-        print("StudentCenter:", self.StudentCenter)
+        print("YunPing:", self.YunPing_count)
+        print("StudentCenter:", self.StudentCenter_count)
 
 
 ###
@@ -72,16 +71,23 @@ img = torch.Tensor([i[0] for i in training_data]).view(-1, Img_size, Img_size)
 img = img / 255.0  # Scaling the value of each pixel to 0~1
 lbl = torch.Tensor([i[1] for i in training_data])
 
+Test_Percentage = 0.1
+Test_set = int(len(img) * Test_Percentage)
+
 Val_Percentage = 0.1
 Val_set = int(len(img) * Val_Percentage)
 
-Train_img = img[:-Val_set]
-Train_lbl = lbl[:-Val_set]
+Train_img = img[:-(Test_set + Val_set)]
+Train_lbl = lbl[:-(Test_set + Val_set)]
 
-Test_img = img[-Val_set:]
-Test_lbl = lbl[-Val_set:]
-print(len(Train_img))
-print(len(Test_img))
+Test_img = img[-(Test_set + Val_set):-Val_set]
+Test_lbl = lbl[-(Test_set + Val_set):-Val_set]
+
+Val_img = img[-Val_set:]
+Val_lbl = lbl[-Val_set:]
+print(f"Training data count :{len(Train_img)}")
+print(f"Testing data count :{len(Test_img)}")
+print(f"Validation data count :{len(Val_img)}")
 
 Optimizer = optim.Adam(net.parameters(), lr=0.001)
 Loss_function = nn.MSELoss()
@@ -111,20 +117,24 @@ def train():
                 batch_lbl = Train_lbl[i:i + Batch_Size].to(Device)
 
                 acc, loss = fwd_pass(batch_img, batch_lbl, train=True)
-                if i % 20 == 0:
-                    val_acc,val_loss=batch_test(size=50)
-                    log_file.write(f"{Model_Name},{int(time.time())},{round(float(acc),3)},{round(float(loss),3)}")
-                    log_file.write(f",{round(float(val_acc),3)},{round(float(val_loss),3)}\n")
+                if i % 1 == 0:
+                    val_acc, val_loss = batch_test(size=50)
+                    log_file.write(f"{Model_Name},{int(time.time())},{round(float(acc), 3)},{round(float(loss), 3)}")
+                    log_file.write(f",{round(float(val_acc), 3)},{round(float(val_loss), 3)}\n")
             print(f"Epoch:{epoch},Lose:{loss}")
 
 
-def test(net):
+def test(net, test=True):
     correct = 0
     total = 0
     with torch.no_grad():
-        for i in tqdm(range(len(Test_img))):
-            real_lbl = torch.argmax(Test_lbl[i]).to(Device)
-            net_out = net(Test_img[i].view(-1, 1, Img_size, Img_size).to(Device))[0]
+        for i in tqdm(range(len(Val_img))):
+            if test:
+                real_lbl = torch.argmax(Test_lbl[i]).to(Device)
+                net_out = net(Test_img[i].view(-1, 1, Img_size, Img_size).to(Device))[0]
+             else:
+                real_lbl = torch.argmax(Val_lbl[i]).to(Device)
+                net_out = net(Val_img[i].view(-1, 1, Img_size, Img_size).to(Device))[0]
 
             predicted_lbl = torch.argmax(net_out)
             if predicted_lbl == real_lbl:
@@ -145,5 +155,7 @@ def batch_test(size=32):
 
 train()
 test(net)
+print("Val_Set:")
+test(net,test=False)
 
 ##
