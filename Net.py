@@ -16,7 +16,7 @@ class Net(nn.Module):
         self.passing_conv(testing_image)
 
         self.fc1 = nn.Linear(self._to_linear, 512)
-        self.fc2 = nn.Linear(512, 2)
+        self.fc2 = nn.Linear(512, 4)
 
     def passing_conv(self, image):
         image = Func.relu(self.conv1(image))

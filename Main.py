@@ -6,7 +6,7 @@ from Net import *
 from tqdm import tqdm
 import time
 
-REBUILD_DATA = False
+REBUILD_DATA =False
 
 Img_size = 100
 Batch_Size = 10
@@ -15,12 +15,15 @@ Epochs = 10
 
 class Animal():
     IMG_SIZE = 100
+    Total_Building=4
     YunPing = "Data/Building/YunPing"
     StudentCenter = "Data/Building/StudentCenter"
-    LABELS = {YunPing: 0, StudentCenter: 1}
+    River= "Data/Building/River"
+    XiaoXiMen= "Data/Building/XiaoXiMen"
+    LABELS = {YunPing: 0, StudentCenter: 1,River:2,XiaoXiMen:3}
     training_data = []
-    YunPing_count = 0
-    StudentCenter_count = 0
+    River_count= 0
+    XiaoXiMen_count= 0
 
     def make_training_data(self):
         for label in self.LABELS:
@@ -30,21 +33,21 @@ class Animal():
                     path = os.path.join(label, f)
                     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
                     img = cv2.resize(img, (self.IMG_SIZE, self.IMG_SIZE))
-                    self.training_data.append([np.array(img), np.eye(2)[self.LABELS[label]]])
+                    self.training_data.append([np.array(img), np.eye(self.Total_Building)[self.LABELS[label]]])
                     # do something like print(np.eye(2)[1]), just makes one_hot vector
 
-                    if label == self.YunPing:
-                        self.YunPing_count += 1
-                    elif label == self.StudentCenter:
-                        self.StudentCenter_count += 1
+                    if label == self.River:
+                        self.River_count+= 1
+                    elif label == self.XiaoXiMen:
+                        self.XiaoXiMen_count+= 1
                 except Exception as e:
                     print(e)
                     pass
 
         np.random.shuffle(self.training_data)
         np.save("training_data.npy", self.training_data)
-        print("YunPing:", self.YunPing_count)
-        print("StudentCenter:", self.StudentCenter_count)
+        print("River:", self.River_count)
+        print("XiaoXiMen:", self.XiaoXiMen_count)
 
 
 ###
@@ -96,6 +99,7 @@ Model_Name = f"model-{int(time.time())}"
 
 
 ##
+from Net import *
 def fwd_pass(img, lbl, train=False):
     if train:
         net.zero_grad()
@@ -107,7 +111,6 @@ def fwd_pass(img, lbl, train=False):
         loss.backward()
         Optimizer.step()
     return acc, loss
-
 
 def train():
     with open("model.log", "w") as log_file:
