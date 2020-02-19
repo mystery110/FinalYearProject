@@ -6,16 +6,15 @@ from Net import *
 from tqdm import tqdm
 import time
 
-REBUILD_DATA =False
 
-Img_size = 100
-Batch_Size = 10
+
+Img_size =50
+Batch_Size = 50
 Epochs = 10
+Total_Building_GuangFu=4
 
-
-class Animal():
-    IMG_SIZE = 100
-    Total_Building=4
+class GuangFu():
+    Total_Building=Total_Building_GuangFu
     YunPing = "Data/Building/YunPing"
     StudentCenter = "Data/Building/StudentCenter"
     River= "Data/Building/River"
@@ -24,6 +23,9 @@ class Animal():
     training_data = []
     River_count= 0
     XiaoXiMen_count= 0
+    def __init__(self,img_size):
+        self.IMG_SIZE = img_size
+
 
     def make_training_data(self):
         for label in self.LABELS:
@@ -51,9 +53,10 @@ class Animal():
 
 
 ###
+REBUILD_DATA =False
 if REBUILD_DATA:
-    animal = Animal()
-    animal.make_training_data()
+    guangfu= GuangFu(Img_size)
+    guangfu.make_training_data()
 training_data = np.load("training_data.npy", allow_pickle=True)
 print(len(training_data))
 
@@ -66,7 +69,7 @@ if torch.cuda.is_available():
 else:
     Device = torch.device("cpu")
     print("Running in CPU")
-net = Net().to(Device)
+net = Net(total_building=Total_Building_GuangFu,img_size=Img_size).to(Device)
 
 ###
 
@@ -97,7 +100,10 @@ Loss_function = nn.MSELoss()
 
 Model_Name = f"model-{int(time.time())}"
 
-
+##
+print(f"training_Data:{len(training_data)}")
+print(f"Actul train data:{len(img)}")
+print(f"Actual label:{len(lbl)}")
 ##
 from Net import *
 def fwd_pass(img, lbl, train=False):
@@ -156,9 +162,39 @@ def batch_test(size=32):
     return val_acc, val_loss
 
 
-train()
-test(net)
-print("Val_Set:")
-test(net,test=False)
+Training=False
+if Training:
+    train()
+    print("Train Set :")
+    test(net)
+    print("Val_Set:")
+    test(net,test=False)
+    torch.save(net,f="Model_Trained.pt")
+else :
+    net=torch.load(f="Model_Trained.pt")
+    net.eval()
+
 
 ##
+test(net,test=False)
+##
+def output_net(dir_path):
+    for f in os.listdir(dir_path):
+        path=os.path.join(dir_path,f)
+        img=cv2.imread(path,cv2.IMREAD_GRAYSCALE)
+        img=cv2.resize(img,(Img_size,Img_size))
+        img=torch.Tensor(img).view(-1,Img_size,Img_size)
+        img=img/255
+        with torch.no_grad():
+            output=net(img.view(-1,1,Img_size,Img_size).to(Device))
+            print(f)
+            print(torch.argmax(output))
+Path= "Data/Test"
+output_net(Path)
+
+
+##
+
+import matplotlib.pyplot as plt
+plt.imshow(Test_img[1][0])
+plt.show()
