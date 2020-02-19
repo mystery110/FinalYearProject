@@ -2,7 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as Func
 class Net(nn.Module):
-    def __init__(self):
+    Img_Size=None
+    def __init__(self,total_building,img_size):
+        self.Img_Size=img_size
         super().__init__()
         self.conv1 = nn.Conv2d(1, 32, 5)
         # input is 1 image, looking for 32 features , 5x5 window size
@@ -10,13 +12,13 @@ class Net(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, 5)
         self.conv3 = nn.Conv2d(64, 128, 5)
 
-        testing_image = torch.randn(100, 100).view(-1, 1, 100, 100)
+        testing_image = torch.randn(self.Img_Size, self.Img_Size).view(-1, 1, self.Img_Size, self.Img_Size)
         # create a random data to test what is the output of the vector when it is flatten
         self._to_linear = None
         self.passing_conv(testing_image)
 
         self.fc1 = nn.Linear(self._to_linear, 512)
-        self.fc2 = nn.Linear(512, 4)
+        self.fc2 = nn.Linear(512, total_building)
 
     def passing_conv(self, image):
         image = Func.relu(self.conv1(image))
@@ -36,3 +38,6 @@ class Net(nn.Module):
         image = Func.relu(self.fc1(image))
         image = self.fc2(image)
         return Func.softmax(image, dim=1)
+
+##
+

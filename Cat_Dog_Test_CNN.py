@@ -6,7 +6,7 @@ from Net import *
 from tqdm import tqdm
 import time
 
-REBUILD_DATA =True
+REBUILD_DATA =False
 
 Img_size = 100
 Batch_Size = 100

@@ -3,8 +3,7 @@ from matplotlib import style
 
 style.use("ggplot")
 
-Model_Name="model-1581911729"
-
+Model_Name="model-1582108192"
 def graph(model_name):
     content=open("model.log","r").read().split("\n")
 
@@ -13,12 +12,13 @@ def graph(model_name):
     losses=[]
     val_accuracy=[]
     val_losses=[]
-
+    i=0
     for line in content:
         if model_name in line:
             name,timestamp,acc,loss,val_acc,val_loss=line.split(",")
 
-            times.append(float(timestamp))
+            times.append(i)
+            i+=1
             accuracy.append(float(acc))
             losses.append((float(loss)))
             val_accuracy.append((float(val_acc)))
