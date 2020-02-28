@@ -1,64 +1,25 @@
-import os
-import cv2
-import numpy as np
 import torch.optim as optim
+from torchvision.models import mobilenet_v2
 from Net import *
-from tqdm import tqdm
 import time
+from GuangFu import *
 
 
-
-Img_size =50
+Img_size =100
 Batch_Size = 50
 Epochs = 10
-Total_Building_GuangFu=4
+Total_Building_GuangFu=5
 
-class GuangFu():
-    Total_Building=Total_Building_GuangFu
-    YunPing = "Data/Building/YunPing"
-    StudentCenter = "Data/Building/StudentCenter"
-    River= "Data/Building/River"
-    XiaoXiMen= "Data/Building/XiaoXiMen"
-    LABELS = {YunPing: 0, StudentCenter: 1,River:2,XiaoXiMen:3}
-    training_data = []
-    River_count= 0
-    XiaoXiMen_count= 0
-    def __init__(self,img_size):
-        self.IMG_SIZE = img_size
-
-
-    def make_training_data(self):
-        for label in self.LABELS:
-            print(label)
-            for f in tqdm(os.listdir(label)):
-                try:
-                    path = os.path.join(label, f)
-                    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-                    img = cv2.resize(img, (self.IMG_SIZE, self.IMG_SIZE))
-                    self.training_data.append([np.array(img), np.eye(self.Total_Building)[self.LABELS[label]]])
-                    # do something like print(np.eye(2)[1]), just makes one_hot vector
-
-                    if label == self.River:
-                        self.River_count+= 1
-                    elif label == self.XiaoXiMen:
-                        self.XiaoXiMen_count+= 1
-                except Exception as e:
-                    print(e)
-                    pass
-
-        np.random.shuffle(self.training_data)
-        np.save("training_data.npy", self.training_data)
-        print("River:", self.River_count)
-        print("XiaoXiMen:", self.XiaoXiMen_count)
-
-
-###
-REBUILD_DATA =False
-if REBUILD_DATA:
-    guangfu= GuangFu(Img_size)
-    guangfu.make_training_data()
+BUILD_DATA =False
+Rebuild_Data=False
+guangfu = GuangFu(Img_size,Total_Building_GuangFu)
+if BUILD_DATA:
+    guangfu.make_training_data(Trained=False)
+elif Rebuild_Data:
+    guangfu.make_training_data(Trained=True)
 training_data = np.load("training_data.npy", allow_pickle=True)
 print(len(training_data))
+
 
 ###
 
@@ -73,7 +34,7 @@ net = Net(total_building=Total_Building_GuangFu,img_size=Img_size).to(Device)
 
 ###
 
-img = torch.Tensor([i[0] for i in training_data]).view(-1, Img_size, Img_size)
+img = torch.Tensor([i[0] for i in training_data]).view(-1, Img_size, Img_size,3)
 img = img / 255.0  # Scaling the value of each pixel to 0~1
 lbl = torch.Tensor([i[1] for i in training_data])
 
@@ -105,7 +66,6 @@ print(f"training_Data:{len(training_data)}")
 print(f"Actul train data:{len(img)}")
 print(f"Actual label:{len(lbl)}")
 ##
-from Net import *
 def fwd_pass(img, lbl, train=False):
     if train:
         net.zero_grad()
@@ -162,7 +122,7 @@ def batch_test(size=32):
     return val_acc, val_loss
 
 
-Training=False
+Training=True
 if Training:
     train()
     print("Train Set :")
@@ -177,8 +137,21 @@ else :
 
 ##
 test(net,test=False)
+
 ##
+name=[]
+#Test image that havent been seen by model before
+for i in range (len(list(guangfu.LABELS.keys()))):
+    txt=list(guangfu.LABELS.keys())[i]
+    # txt=txt.split("/")
+    #name.append(txt[len(txt)-1])
+    name.append(txt)
+
+
+Actual_lbl={"YunPing": 0, "StudentCenter": 1, "River": 2, "XiaoXiMen": 3, "Tree": 4}
 def output_net(dir_path):
+    total_test = 0
+    correct = 0
     for f in os.listdir(dir_path):
         path=os.path.join(dir_path,f)
         img=cv2.imread(path,cv2.IMREAD_GRAYSCALE)
@@ -189,12 +162,45 @@ def output_net(dir_path):
             output=net(img.view(-1,1,Img_size,Img_size).to(Device))
             print(f)
             print(torch.argmax(output))
+            predicted_lbl=int(torch.argmax(output))
+            if list(Actual_lbl.keys())[predicted_lbl] in path:
+                print("Correct")
+                correct=correct+1
+            else :
+                print(f"Incorrect,{list(Actual_lbl.keys())[predicted_lbl]}")
+            total_test+=1
+
+    print(f"Unseen Data Accuracy {round(correct/total_test,3)}")
+
 Path= "Data/Test"
 output_net(Path)
 
 
 ##
+testingImage=torch.randn(Img_size,Img_size).view(-1,1,Img_size,Img_size).to(Device);
+
+net=torch.jit.trace(net,testingImage)
+net.save("mobilenet.pt")
+
+
+
+##
 
 import matplotlib.pyplot as plt
-plt.imshow(Test_img[1][0])
+path="Data/Test/River.jpg"
+img=cv2.imread(path,cv2.IMREAD_COLOR)
+img=cv2.resize(img,(Img_size,Img_size))
+print(img.shape)
+Image=cv2.imread(path,cv2.IMREAD_GRAYSCALE)
+Image=cv2.resize(Image,(Img_size,Img_size))
+print(Image.shape)
+plt.imshow(training_data[1][0])
 plt.show()
+##
+
+##
+print(list(guangfu.LABELS)[0])
+
+
+##
+

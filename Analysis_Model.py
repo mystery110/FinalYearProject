@@ -3,7 +3,7 @@ from matplotlib import style
 
 style.use("ggplot")
 
-Model_Name="model-1582108192"
+Model_Name="model-1582199043"
 def graph(model_name):
     content=open("model.log","r").read().split("\n")
 
